@@ -1,22 +1,33 @@
-import { expect, it } from "vitest";
-import { Client } from "@modelcontextprotocol/client";
-import { InMemoryTransport } from "@modelcontextprotocol/server";
-import { createServer } from "../src/server.js";
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { connect, type Harness } from "./harness.js";
 
-it("completes the handshake and lists get_datetime with annotations intact", async () => {
-  const server = createServer();
-  const client = new Client({ name: "smoke", version: "0.1.0" });
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+let mcp: Harness;
 
-  await Promise.all([
-    server.connect(serverTransport),
-    client.connect(clientTransport),
-  ]);
+beforeEach(async () => {
+  mcp = await connect();
+});
 
-  const { tools } = await client.listTools();
+afterEach(async () => {
+  await mcp.close();
+});
+
+it("completes the handshake and lists get_datetime with its contract intact", async () => {
+  const { tools } = await mcp.client.listTools();
   expect(tools.map((tool) => tool.name)).toEqual(["get_datetime"]);
-  expect(tools[0]?.annotations).toEqual({ readOnlyHint: true, openWorldHint: false });
 
-  await client.close();
-  await server.close();
+  const tool = tools[0];
+  expect(tool?.annotations).toEqual({ readOnlyHint: true, openWorldHint: false });
+  expect(tool?.inputSchema).toMatchObject({
+    type: "object",
+    properties: {
+      timezone: { type: "string", default: "UTC" },
+      offsetDays: { type: "integer", minimum: -365, maximum: 365, default: 0 },
+      format: { type: "string", enum: ["iso", "unix", "human"], default: "iso" },
+    },
+  });
+  expect(tool?.outputSchema).toMatchObject({
+    type: "object",
+    required: ["iso", "unix", "timezone"],
+    additionalProperties: false,
+  });
 });
