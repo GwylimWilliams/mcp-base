@@ -13,3 +13,10 @@ export function jsonResult(obj: Record<string, unknown>): CallToolResult {
     structuredContent: obj,
   };
 }
+
+export function errorResult(message: string): CallToolResult {
+  return {
+    content: [{ type: "text", text: message }],
+    isError: true,
+  };
+}

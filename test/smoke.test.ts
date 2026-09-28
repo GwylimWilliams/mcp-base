@@ -3,7 +3,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { createServer } from "../src/server.js";
 
-it("completes the handshake and lists zero tools", async () => {
+it("completes the handshake and lists get_datetime with annotations intact", async () => {
   const server = createServer();
   const client = new Client({ name: "smoke", version: "0.1.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -14,7 +14,8 @@ it("completes the handshake and lists zero tools", async () => {
   ]);
 
   const { tools } = await client.listTools();
-  expect(tools).toEqual([]);
+  expect(tools.map((tool) => tool.name)).toEqual(["get_datetime"]);
+  expect(tools[0]?.annotations).toEqual({ readOnlyHint: true, openWorldHint: false });
 
   await client.close();
   await server.close();
